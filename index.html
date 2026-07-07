@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="GymTracker Pro"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FF6B35'/><text y='.9em' font-size='80' x='10'>⚡</text></svg>"/>
+<title>GymTracker Pro — Multi-Gym Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;scroll-behavior:smooth}
+:root{
+  --accent:#FF6B35;--accent-d:#E05520;--accent-glow:rgba(255,107,53,.22);
+  --bg:#0C0E13;--bg2:#111318;--bg3:#181B23;--bg4:#1F2330;--bg5:#252837;
+  --t1:#F2F4FA;--t2:#9AA3B8;--t3:#5A6175;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.12);
+  --blue:#4A9EFF;--green:#00C853;--purple:#B97BFF;--red:#FF4D6D;--yellow:#FFD600;
+  --r:10px;--r2:14px;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;display:flex;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+input,select,textarea,button{font-family:inherit}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:3px}
+
+/* ── iOS / SAFARI FIXES ───────────────────────────────────── */
+/* Prevent iOS input zoom (font-size must be ≥16px on focus) */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  /* But keep label/display text normal */
+  .auth-lbl, .flbl { font-size: 13px !important; }
+}
+/* Tap highlight removal */
+* { -webkit-tap-highlight-color: transparent; }
+/* Momentum scroll on iOS */
+#sidebar, #content, #modal, .view, div[style*="overflow-x:auto"], .auth-box {
+  -webkit-overflow-scrolling: touch;
+}
+/* Fix position:fixed on iOS (viewport unit issue) */
+#auth-screen { height: 100dvh; }
+body { min-height: 100dvh; }
+/* Safe area insets for notch/home bar */
+#sidebar {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+#topbar {
+  padding-left: max(22px, env(safe-area-inset-left, 0px));
+  padding-right: max(22px, env(safe-area-inset-right, 0px));
+}
+#bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+#content {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+/* Prevent callout on long press */
+img, svg { -webkit-touch-callout: none; user-select: none; }
+/* Fix button appearance on iOS Safari */
+button, .auth-btn, .add-btn, .btn-save, .btn-cancel {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+/* Fix select arrow on iOS */
+select { -webkit-appearance: none; appearance: none; }
+/* Smooth scrolling everywhere */
+html { -webkit-text-size-adjust: 100%; }
+/* Touch targets - min 44x44 per Apple HIG */
+.nav-item { min-height: 44px; }
+.act { width: 36px; height: 36px; }
+.auth-tab { min-height: 40px; display: flex; align-items: center; justify-content: center; }
+.tb-btn { min-height: 40px; }
+/* Bottom nav (iOS style, shown on mobile) */
+#bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  z-index: 300;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 0;
+}
+.bn-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  color: var(--t3);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .15s;
+  min-width: 56px;
+  -webkit-tap-highlight-color: transparent;
+}
+.bn-item svg { width: 22px; height: 22px; }
+.bn-item.active { color: var(--accent); }
+.bn-item.hidden { display: none; }
+@media (max-width: 900px) {
+  #bottom-nav { display: flex; }
+  #topbar { display: none; }
+  #main { padding-top: 0; }
+  #content { padding-top: 14px; }
+  /* iOS mobile: full-screen sidebar overlay */
+  #sidebar {
+    width: 80vw;
+    max-width: 300px;
+    box-shadow: 4px 0 30px rgba(0,0,0,.6);
+  }
+}
+
+/* ── AUTH SCREEN ──────────────────────────────────────────────── */
+#auth-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:999;
+  display:flex;align-items:center;justify-content:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  animation:fadeUp .4s var(--ease) both;
+}
+.auth-box{
+  background:var(--bg3);border:1px solid var(--border2);border-radius:20px;
+  padding:40px 36px;width:440px;max-width:94vw;
+  flex-shrink:0;
+}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:30px;justify-content:center}
+.auth-brand-icon{width:44px;height:44px;background:var(--accent);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 24px var(--accent-glow)}
+.auth-brand-name{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:-0.4px}
+.auth-tabs{display:flex;background:var(--bg4);border-radius:10px;padding:4px;margin-bottom:26px;gap:4px}
+.auth-tab{flex:1;padding:8px;text-align:center;border-radius:7px;font-size:13px;font-weight:600;color:var(--t3);cursor:pointer;transition:all .2s}
+.auth-tab.active{background:var(--accent);color:#fff}
+.auth-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px}
+.auth-sub{font-size:13px;color:var(--t3);margin-bottom:24px}
+.auth-fg{margin-bottom:16px}
+.auth-lbl{display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin-bottom:5px}
+.auth-input{width:100%;padding:10px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:9px;color:var(--t1);font-size:13.5px;outline:none;transition:border-color .15s,box-shadow .15s}
+.auth-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.auth-input::placeholder{color:var(--t3)}
+.auth-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:4px;font-family:'Syne',sans-serif;letter-spacing:.2px}
+.auth-btn:hover{background:var(--accent-d);box-shadow:0 4px 18px var(--accent-glow)}
+.auth-err{background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.3);color:var(--red);padding:9px 13px;border-radius:8px;font-size:12.5px;margin-bottom:14px;display:none}
+.auth-err.show{display:block}
+.auth-footer{text-align:center;margin-top:18px;font-size:12px;color:var(--t3)}
+.auth-footer span{color:var(--accent);cursor:pointer;font-weight:600}
+.auth-footer span:hover{text-decoration:underline}
+.role-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.role-opt{padding:10px 6px;border-radius:8px;border:1px solid var(--border);text-align:center;cursor:pointer;transition:all .15s;font-size:11.5px;font-weight:600;color:var(--t3)}
+.role-opt.sel{border-color:var(--accent);background:rgba(255,107,53,.1);color:var(--accent)}
+.auth-info-box{background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);border-radius:9px;padding:10px 13px;font-size:12px;color:var(--blue);margin-bottom:16px;line-height:1.5}
+
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+#sidebar{
+  width:240px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:200;
+  transition:transform .25s var(--ease);overflow-y:auto;overflow-x:hidden;
+}
+.brand{display:flex;align-items:center;gap:11px;padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+.brand-icon{width:36px;height:36px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 0 18px var(--accent-glow)}
+.brand-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-section{font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--t3);padding:16px 16px 5px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9px 14px;border-radius:8px;margin:2px 8px;color:var(--t2);font-size:13.5px;font-weight:500;cursor:pointer;transition:all .15s var(--ease);position:relative;user-select:none}
+.nav-item:hover{background:var(--bg4);color:var(--t1)}
+.nav-item.active{background:rgba(255,107,53,.12);color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:3px;background:var(--accent);border-radius:0 3px 3px 0}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+.nav-item.hidden{display:none}
+.sidebar-foot{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border)}
+.user-row{display:flex;align-items:center;gap:10px}
+.user-ava{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
+.user-name{font-size:13px;font-weight:600;color:var(--t1)}
+.user-role{font-size:11px;color:var(--t3)}
+.gym-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;background:rgba(255,107,53,.12);color:var(--accent);padding:2px 8px;border-radius:20px;font-weight:600;margin-top:2px}
+
+/* ── MAIN ────────────────────────────────────────────────── */
+#main{margin-left:240px;flex:1;display:flex;flex-direction:column;min-width:0}
+#topbar{height:60px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;position:sticky;top:0;z-index:100}
+#topbar-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;flex:1;letter-spacing:-0.3px}
+.tb-btn{display:flex;align-items:center;gap:6px;padding:0 13px;height:34px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--t2);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tb-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb-btn svg{width:13px;height:13px}
+.tb-gym-chip{display:flex;align-items:center;gap:6px;padding:0 12px;height:34px;background:rgba(255,107,53,.09);border:1px solid rgba(255,107,53,.3);border-radius:8px;color:var(--accent);font-size:12px;font-weight:600}
+#hamburger{display:none;background:none;border:none;color:var(--t2);cursor:pointer;padding:4px;margin-right:4px}
+#hamburger svg{width:22px;height:22px}
+#content{padding:22px;flex:1}
+
+/* ── VIEWS ───────────────────────────────────────────────── */
+.view{display:none;animation:fadeUp .3s var(--ease) both}
+.view.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── STAT CARDS ──────────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:18px 18px 14px;position:relative;overflow:hidden;cursor:default;transition:transform .15s,box-shadow .15s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r2) var(--r2) 0 0}
+.sc-blue::before{background:var(--blue)}
+.sc-green::before{background:var(--green)}
+.sc-orange::before{background:var(--accent)}
+.sc-purple::before{background:var(--purple)}
+.sc-icon{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:18px}
+.sc-blue .sc-icon{background:rgba(74,158,255,.13);color:var(--blue)}
+.sc-green .sc-icon{background:rgba(0,200,83,.13);color:var(--green)}
+.sc-orange .sc-icon{background:rgba(255,107,53,.13);color:var(--accent)}
+.sc-purple .sc-icon{background:rgba(185,123,255,.13);color:var(--purple)}
+.sc-val{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;line-height:1;margin-bottom:4px}
+.sc-label{font-size:12.5px;color:var(--t2);font-weight:500;margin-bottom:10px}
+.sc-sub{display:inline-flex;font-size:11px;background:rgba(0,200,83,.13);color:var(--green);padding:2px 9px;border-radius:20px;font-weight:600}
+.sc-link{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--t3);margin-top:12px;transition:color .15s;cursor:pointer}
+.sc-link:hover{color:var(--accent)}
+
+/* ── PANEL ───────────────────────────────────────────────── */
+.panel{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:22px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--border)}
+.panel-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.panel-title svg{width:15px;height:15px;color:var(--accent)}
+.panel-action{font-size:11.5px;color:var(--accent);padding:4px 11px;border:1px solid rgba(255,107,53,.4);border-radius:20px;cursor:pointer;transition:all .15s;font-weight:600}
+.panel-action:hover{background:var(--accent);color:#fff}
+.panel-body{padding:18px}
+
+/* ── GRID LAYOUTS ────────────────────────────────────────── */
+.grid-2{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:22px}
+.grid-form{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+
+/* ── BAR CHART ───────────────────────────────────────────── */
+.chart-wrap{height:190px;display:flex;align-items:flex-end;gap:9px;padding:8px 0 0}
+.bar-g{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+.bar{width:100%;border-radius:6px 6px 0 0;transition:opacity .15s}
+.bar:hover{opacity:1!important}
+.bar-lbl{font-size:11px;color:var(--t3)}
+
+/* ── QUICK ACTIONS ───────────────────────────────────────── */
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.quick-btn{padding:15px 10px;border-radius:9px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s;color:var(--t2)}
+.quick-btn svg{width:20px;height:20px}
+.quick-btn:hover{transform:translateY(-2px);color:#fff}
+.qb{background:rgba(74,158,255,.07)} .qb svg{color:var(--blue)} .qb:hover{background:var(--blue);border-color:var(--blue)}
+.qg{background:rgba(0,200,83,.07)} .qg svg{color:var(--green)} .qg:hover{background:var(--green);border-color:var(--green)}
+.qo{background:rgba(255,107,53,.07)} .qo svg{color:var(--accent)} .qo:hover{background:var(--accent);border-color:var(--accent)}
+.qp{background:rgba(185,123,255,.07)} .qp svg{color:var(--purple)} .qp:hover{background:var(--purple);border-color:var(--purple)}
+.mini-title{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
+.pbar{margin-bottom:10px}
+.pbar-row{display:flex;justify-content:space-between;font-size:11.5px;font-weight:600;margin-bottom:4px}
+.pbar-track{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:3px;transition:width 1.4s var(--ease)}
+
+/* ── TABLE ───────────────────────────────────────────────── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead tr{background:var(--bg4);border-bottom:1px solid var(--border)}
+.tbl thead th{padding:11px 15px;text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--t3);white-space:nowrap}
+.tbl tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .12s;cursor:default}
+.tbl tbody tr:last-child{border-bottom:none}
+.tbl tbody tr:hover{background:var(--bg4)}
+.tbl td{padding:13px 15px;color:var(--t2);vertical-align:middle}
+.mem-cell{display:flex;align-items:center;gap:10px}
+.ava{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.ava-lg{width:56px;height:56px;font-size:20px}
+.mem-name{color:var(--t1);font-weight:600;font-size:13px}
+.sub-text{font-size:11px;color:var(--t3)}
+
+/* ── BADGES ──────────────────────────────────────────────── */
+.bdg{display:inline-flex;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+.bdg-active{background:rgba(0,200,83,.14);color:var(--green)}
+.bdg-expired{background:rgba(255,77,109,.14);color:var(--red)}
+.bdg-suspended{background:rgba(255,214,0,.14);color:var(--yellow)}
+.bdg-inactive{background:rgba(90,97,117,.2);color:var(--t3)}
+.bdg-basic{background:rgba(74,158,255,.14);color:var(--blue)}
+.bdg-standard{background:rgba(185,123,255,.14);color:var(--purple)}
+.bdg-premium{background:rgba(255,107,53,.14);color:var(--accent)}
+.bdg-owner{background:rgba(255,214,0,.14);color:var(--yellow)}
+.bdg-trainer{background:rgba(0,200,83,.14);color:var(--green)}
+.ex-tag{background:var(--bg4);border:1px solid var(--border);color:var(--t2);padding:2px 8px;border-radius:6px;font-size:11.5px;font-weight:600}
+.dur-val{color:var(--blue);font-weight:600}
+.cal-val{color:var(--accent);font-weight:600}
+.cnt-badge{background:var(--accent);color:#fff;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:7px}
+
+/* ── ACTION BUTTONS ──────────────────────────────────────── */
+.acts{display:flex;gap:6px}
+.act{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--bg4);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);transition:all .15s;font-size:12px}
+.act:hover.v-btn{background:var(--blue);border-color:var(--blue);color:#fff}
+.act:hover.e-btn{background:var(--purple);border-color:var(--purple);color:#fff}
+.act:hover.d-btn{background:var(--red);border-color:var(--red);color:#fff}
+
+/* ── TOOLBAR ─────────────────────────────────────────────── */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.srch-wrap{position:relative;flex:1;min-width:200px}
+.srch-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--t3)}
+.srch{width:100%;padding:8px 12px 8px 32px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:13px;outline:none;transition:border-color .15s}
+.srch:focus{border-color:var(--accent)}
+.srch::placeholder{color:var(--t3)}
+.flt{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--t2);font-size:13px;outline:none;cursor:pointer;transition:border-color .15s}
+.flt:focus{border-color:var(--accent);color:var(--t1)}
+.flt option{background:var(--bg4)}
+.add-btn{display:flex;align-items:center;gap:6px;padding:8px 15px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.add-btn:hover{background:var(--accent-d);transform:translateY(-1px);box-shadow:0 4px 16px var(--accent-glow)}
+.add-btn svg{width:13px;height:13px}
+
+/* ── TRAINER CARDS ───────────────────────────────────────── */
+.tcard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:22px}
+.tcard{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;transition:all .15s var(--ease)}
+.tcard:hover{border-color:rgba(255,107,53,.38);transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,.4)}
+.tcard-head{padding:20px 16px 12px;display:flex;justify-content:space-between;align-items:flex-start}
+.tava{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:#fff}
+.tcard-body{padding:0 16px 14px}
+.tcard-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px}
+.tcard-spec{display:flex;align-items:center;gap:5px;color:var(--t3);font-size:11.5px;margin-bottom:10px}
+.tcard-spec svg{width:11px;height:11px;color:var(--yellow)}
+.tcard-contact{font-size:11.5px;color:var(--t3);margin-bottom:12px;display:flex;flex-direction:column;gap:3px}
+.tmeta{display:flex;gap:20px}
+.tmi{display:flex;flex-direction:column;gap:2px}
+.tmi-lbl{font-size:9.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.tmi-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--t1)}
+.tcard-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:7px}
+
+/* ── FORM ────────────────────────────────────────────────── */
+.form-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:20px}
+.fsec{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--t3);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.frow2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.fg{margin-bottom:14px}
+.flbl{display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin-bottom:5px}
+.finput,.fsel,.ftarea{width:100%;padding:9px 13px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s}
+.finput:focus,.fsel:focus,.ftarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.finput::placeholder,.ftarea::placeholder{color:var(--t3)}
+.fsel option{background:var(--bg4)}
+.ftarea{resize:vertical;min-height:72px}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;padding-top:16px;margin-top:6px;border-top:1px solid var(--border)}
+.btn-cancel{padding:9px 18px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-cancel:hover{color:var(--t1);background:var(--bg5)}
+.btn-save{padding:9px 20px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-save:hover{background:var(--accent-d);box-shadow:0 4px 16px var(--accent-glow)}
+
+/* ── MOBILE TOPBAR (replaces hidden topbar on mobile) ─── */
+#mobile-topbar {
+  display: none;
+  height: 56px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  padding: 0 16px;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@media (max-width: 900px) {
+  #mobile-topbar { display: flex; }
+}
+#mob-title { font-family:'Syne',sans-serif; font-size: 17px; font-weight: 700; flex: 1; }
+.mob-gym-chip { font-size: 11px; background: rgba(255,107,53,.1); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+
+/* iOS modal fix - don't use transform centering which breaks with keyboard */
+@media (max-width: 900px) {
+  #modal {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  #modal.show {
+    transform: translateY(0);
+    top: auto;
+    left: 0;
+  }
+  /* Pull indicator */
+  #modal::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--border2);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  /* Auth screen - use scroll instead of fixed+center on iOS */
+  #auth-screen {
+    position: absolute;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start;
+    padding: 30px 0 40px;
+  }
+  .auth-box {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 24px 20px 36px;
+    margin: 0;
+  }
+  /* Table horizontal scroll on mobile */
+  .panel > div[style*="overflow-x"] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Workout form stacked */
+  div[style*="grid-template-columns:1fr 290px"] {
+    display: block !important;
+  }
+  .form-card {
+    margin-top: 16px;
+  }
+  /* Stats 2 col on iPhone */
+  .stats-grid { grid-template-columns: 1fr 1fr !important; }
+}
+.spec-tags{display:flex;flex-wrap:wrap;gap:7px}
+.spec-tag{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:var(--bg4);border:1px solid var(--border);color:var(--t2);cursor:pointer;transition:all .15s}
+.spec-tag:hover{background:rgba(255,107,53,.1);border-color:rgba(255,107,53,.4);color:var(--accent)}
+.cal-guide{display:flex;flex-direction:column;gap:8px}
+.cal-item{display:flex;justify-content:space-between;font-size:12px;padding:6px 10px;background:var(--bg4);border-radius:7px}
+.cal-ex{color:var(--t2)}
+.cal-v{color:var(--accent);font-weight:600}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:44px 24px;color:var(--t3);font-size:13.5px}
+.empty-state svg{width:40px;height:40px;margin:0 auto 12px;display:block;opacity:.35}
+.empty-state a{color:var(--accent);cursor:pointer}
+
+/* TOAST */
+#toast{position:fixed;bottom:22px;right:22px;background:var(--bg3);border:1px solid rgba(0,200,83,.38);color:var(--green);padding:10px 16px;border-radius:10px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;z-index:9999;transform:translateY(80px);opacity:0;transition:all .28s var(--ease);pointer-events:none;max-width:320px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.error{border-color:rgba(255,77,109,.38);color:var(--red)}
+#toast svg{width:13px;height:13px;flex-shrink:0}
+
+/* OVERLAY */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;display:none;backdrop-filter:blur(2px)}
+#overlay.show{display:block}
+
+/* MODAL FORM */
+#modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.95);background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:24px;width:560px;max-width:95vw;z-index:160;opacity:0;transition:all .25s var(--ease);pointer-events:none;max-height:90vh;overflow-y:auto}
+#modal.show{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:all}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+.modal-close{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--bg4);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);font-size:16px;transition:all .15s}
+.modal-close:hover{background:var(--red);border-color:var(--red);color:#fff}
+
+/* TRAINER PORTAL ONLY NOTICE */
+.trainer-notice{background:rgba(0,200,83,.07);border:1px solid rgba(0,200,83,.2);border-radius:10px;padding:12px 16px;font-size:12.5px;color:var(--green);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.trainer-notice svg{width:16px;height:16px;flex-shrink:0}
+
+/* MY WORKOUTS (trainer view) */
+.my-wk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}
+.my-wk-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.my-wk-member{font-weight:700;font-size:13px;color:var(--t1);margin-bottom:6px}
+.my-wk-detail{font-size:11.5px;color:var(--t3);display:flex;flex-direction:column;gap:2px}
+.my-wk-ex{color:var(--accent);font-weight:600;font-size:12px}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}}
+@media(max-width:900px){
+  #sidebar{transform:translateX(-100%)}
+  #sidebar.open{transform:translateX(0)}
+  #main{margin-left:0}
+  #hamburger{display:block}
+  .grid-form{grid-template-columns:1fr}
+  .frow3{grid-template-columns:1fr 1fr}
+  #overlay.show{display:block}
+}
+@media(max-width:600px){
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .tcard-grid{grid-template-columns:1fr}
+  .frow2,.frow3{grid-template-columns:1fr}
+  #content{padding:14px}
+  .toolbar{flex-direction:column;align-items:stretch}
+}
+@media(max-width:420px){
+  .stats-grid{grid-template-columns:1fr}
+  #topbar{padding:0 12px}
+  #topbar-title{font-size:17px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── AUTH SCREEN ──────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">⚡</div>
+      <span class="auth-brand-name">GymTracker Pro</span>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</div>
+      <div class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</div>
+    </div>
+    <div id="auth-err" class="auth-err"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Login to manage your gym</div>
+      <div class="auth-fg">
+        <label class="auth-lbl">Email</label>
+        <input class="auth-input" id="l-user" type="email" placeholder="admin@gym.com" autocomplete="username" autocorrect="off" autocapitalize="none" spellcheck="false"/>
+      </div>
+      <div class="auth-fg">
+        <label class="auth-lbl">Password</label>
+        <input class="auth-input" id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password" autocorrect="off" autocapitalize="none" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <button type="button" class="auth-btn" onclick="doLogin()">Login →</button>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div id="signup-form" style="display:none">
+      <div class="auth-title">Create Account</div>
+      <div class="auth-sub">Register your gym and get started</div>
+      <div class="auth-fg">
+        <label class="auth-lbl">Your Role</label>
+        <div class="role-row">
+          <div class="role-opt sel" id="role-owner" onclick="selectRole('Owner')">👑 Owner</div>
+          <div class="role-opt" id="role-manager" onclick="selectRole('Manager')">🏢 Manager</div>
+          <div class="role-opt" id="role-trainer" onclick="selectRole('Trainer')">🏋 Trainer</div>
+        </div>
+      </div>
+      <div id="gym-select-field" class="auth-fg" style="display:none">
+        <label class="auth-lbl">Your Gym</label>
+        <select class="auth-input" id="s-gym-select" style="cursor:pointer">
+          <option value="">-- Select a gym --</option>
+        </select>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">Trainers & Managers join an existing gym</div>
+      </div>
+      <div id="gym-name-field" class="auth-fg">
+        <label class="auth-lbl">Gym Name</label>
+        <input class="auth-input" id="s-gym" type="text" placeholder="e.g. PowerHouse Gym" autocorrect="off" autocapitalize="words"/>
+      </div>
+      <div class="auth-fg">
+        <label class="auth-lbl">Full Name</label>
+        <input class="auth-input" id="s-name" type="text" placeholder="Your full name" autocorrect="off" autocapitalize="words"/>
+      </div>
+      <div class="auth-fg">
+        <label class="auth-lbl">Email</label>
+        <input class="auth-input" id="s-email" type="email" placeholder="you@gym.com" autocorrect="off" autocapitalize="none" spellcheck="false"/>
+      </div>
+      <div class="auth-fg">
+        <label class="auth-lbl">Password</label>
+        <input class="auth-input" id="s-pass" type="password" placeholder="Min 6 characters" autocorrect="off" autocapitalize="none" onkeydown="if(event.key==='Enter')doSignup()"/>
+      </div>
+      <button type="button" class="auth-btn" onclick="doSignup()">Create Account →</button>
+    </div>
+
+    <div class="auth-footer" id="auth-foot">
+      Don't have an account? <span onclick="switchAuthTab('signup')">Sign Up</span>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<!-- ── TOAST ──────────────────────────────────────── -->
+<div id="toast">
+  <svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>
+  <span id="toast-msg">Done</span>
+</div>
+
+<!-- ── MODAL ──────────────────────────────────────── -->
+<div id="modal">
+  <div class="modal-header">
+    <div class="modal-title" id="modal-title">Form</div>
+    <div class="modal-close" onclick="closeModal()">✕</div>
+  </div>
+  <div id="modal-body"></div>
+</div>
+
+<!-- ── SIDEBAR ────────────────────────────────────── -->
+<nav id="sidebar">
+  <div class="brand">
+    <div class="brand-icon">⚡</div>
+    <span class="brand-name" id="gym-brand">GymTracker</span>
+  </div>
+  <div style="padding:6px 0;flex:1">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" data-page="dashboard" onclick="go('dashboard',this)">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zm8 0A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zm-8 8A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zm8 0A1.5 1.5 0 0110.5 9h3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 13.5v-3z"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-section">Management</div>
+    <div class="nav-item" data-page="members" onclick="go('members',this)" id="nav-members">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 100-6 3 3 0 000 6z"/><path fill-rule="evenodd" d="M5.216 14A2.238 2.238 0 015 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 005 9c-4 0-5 3-5 4s1 1 1 1h4.216z"/><path d="M4.5 8a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg>
+      Members
+    </div>
+    <div class="nav-item" data-page="trainers" onclick="go('trainers',this)" id="nav-trainers">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H3zm5-6a3 3 0 100-6 3 3 0 000 6z"/></svg>
+      Trainers
+    </div>
+    <div class="nav-item" data-page="workouts" onclick="go('workouts',this)" id="nav-workouts">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 2a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM9.05 3a2.5 2.5 0 014.9 0H16v1h-2.05a2.5 2.5 0 01-4.9 0H7.95a2.5 2.5 0 01-4.9 0H1V3h2.05a2.5 2.5 0 014.9 0h1.1zM4.5 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
+      Workouts
+    </div>
+    <div class="nav-item hidden" data-page="my-clients" onclick="go('my-clients',this)" id="nav-my-clients">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 100-6 3 3 0 000 6z"/></svg>
+      My Clients
+    </div>
+  </div>
+  <div class="sidebar-foot">
+    <div class="user-row">
+      <div class="user-ava" id="sb-ava">U</div>
+      <div>
+        <div class="user-name" id="sb-name">User</div>
+        <div class="user-role" id="sb-role">Role</div>
+        <div class="gym-badge" id="sb-gym-badge">🏋 Gym</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:6px">
+      <div class="tb-btn" style="flex:1;justify-content:center" onclick="doLogout()">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M10 12.5a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5v-9a.5.5 0 01.5-.5h8a.5.5 0 01.5.5v2a.5.5 0 001 0v-2A1.5 1.5 0 009.5 2h-8A1.5 1.5 0 000 3.5v9A1.5 1.5 0 001.5 14h8a1.5 1.5 0 001.5-1.5v-2a.5.5 0 00-1 0v2z"/><path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 000-.708l-3-3a.5.5 0 00-.708.708L14.293 7.5H5.5a.5.5 0 000 1h8.793l-2.147 2.146a.5.5 0 00.708.708l3-3z"/></svg>
+        Logout
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN ─────────────────────────────────────── -->
+<div id="main">
+  <!-- Mobile topbar (iOS) -->
+  <div id="mobile-topbar">
+    <div id="mob-title">Dashboard</div>
+    <div class="mob-gym-chip" id="mob-gym-chip">🏋 Gym</div>
+  </div>
+
+  <div id="topbar">
+    <button id="hamburger" onclick="toggleSidebar()">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5z"/></svg>
+    </button>
+    <div id="topbar-title">Dashboard</div>
+    <div class="tb-gym-chip" id="topbar-gym">🏋 Gym</div>
+    <div class="tb-btn" id="tb-role-badge">👑 Owner</div>
+  </div>
+
+  <div id="content">
+
+    <!-- ══ DASHBOARD ══════════════════════════════════ -->
+    <div class="view active" id="view-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card sc-blue">
+          <div class="sc-icon">👥</div>
+          <div class="sc-val" id="c-members">0</div>
+          <div class="sc-label">Total Members</div>
+          <div class="sc-sub" id="active-members-sub">0 active</div>
+          <div class="sc-link" onclick="go('members',null)">View all →</div>
+        </div>
+        <div class="stat-card sc-green">
+          <div class="sc-icon">🏅</div>
+          <div class="sc-val" id="c-trainers">0</div>
+          <div class="sc-label">Total Trainers</div>
+          <div class="sc-sub" id="active-trainers-sub">0 active</div>
+          <div class="sc-link" onclick="go('trainers',null)">View all →</div>
+        </div>
+        <div class="stat-card sc-orange">
+          <div class="sc-icon">🔥</div>
+          <div class="sc-val" id="c-workouts">0</div>
+          <div class="sc-label">Total Workouts</div>
+          <div class="sc-sub" id="workouts-sub">0 this month</div>
+          <div class="sc-link" onclick="go('workouts',null)">View all →</div>
+        </div>
+        <div class="stat-card sc-purple">
+          <div class="sc-icon">📊</div>
+          <div class="sc-val" id="c-avg">0</div>
+          <div class="sc-label">Avg Workouts/Member</div>
+          <div class="sc-sub">All time</div>
+          <div class="sc-link" onclick="go('workouts',null)">Details →</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel" style="margin-bottom:0">
+          <div class="panel-head">
+            <div class="panel-title">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 11a1 1 0 011-1h2a1 1 0 011 1v3a1 1 0 01-1 1H2a1 1 0 01-1-1v-3zm5-4a1 1 0 011-1h2a1 1 0 011 1v7a1 1 0 01-1 1H7a1 1 0 01-1-1V7zm5-5a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V2z"/></svg>
+              Monthly Workouts
+            </div>
+          </div>
+          <div class="panel-body"><div class="chart-wrap" id="barChart"></div></div>
+        </div>
+
+        <div class="panel" style="margin-bottom:0">
+          <div class="panel-head"><div class="panel-title">⚡ Quick Actions</div></div>
+          <div class="panel-body">
+            <div class="quick-grid" id="quick-actions-grid">
+              <div class="quick-btn qb" id="qa-add-member" onclick="openMemberModal()"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm2-3a2 2 0 11-4 0 2 2 0 014 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>Add Member</div>
+              <div class="quick-btn qg" id="qa-add-trainer" onclick="openTrainerModal()"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H3zm5-6a3 3 0 100-6 3 3 0 000 6z"/></svg>Add Trainer</div>
+              <div class="quick-btn qo" onclick="go('workouts',null)"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 118 1a7 7 0 010 14zm0 1A8 8 0 108 0a8 8 0 000 16z"/><path d="M8 4a.5.5 0 01.5.5v3h3a.5.5 0 010 1h-3v3a.5.5 0 01-1 0v-3h-3a.5.5 0 010-1h3v-3A.5.5 0 018 4z"/></svg>Log Workout</div>
+              <div class="quick-btn qp" onclick="go('workouts',null)"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a.5.5 0 00-1 0V9a.5.5 0 00.252.434l3.5 2a.5.5 0 00.496-.868L8 8.71V3.5z"/><path d="M8 16A8 8 0 108 0a8 8 0 000 16zm7-8A7 7 0 111 8a7 7 0 0114 0z"/></svg>History</div>
+            </div>
+            <div class="mini-title">Membership Plans</div>
+            <div class="pbar"><div class="pbar-row"><span style="color:var(--blue)">BASIC</span><span style="color:var(--t3)" id="plan-basic-cnt">0 members</span></div><div class="pbar-track"><div class="pbar-fill" id="pbar-basic" style="width:0;background:var(--blue)"></div></div></div>
+            <div class="pbar"><div class="pbar-row"><span style="color:var(--purple)">STANDARD</span><span style="color:var(--t3)" id="plan-std-cnt">0 members</span></div><div class="pbar-track"><div class="pbar-fill" id="pbar-std" style="width:0;background:var(--purple)"></div></div></div>
+            <div class="pbar"><div class="pbar-row"><span style="color:var(--accent)">PREMIUM</span><span style="color:var(--t3)" id="plan-prem-cnt">0 members</span></div><div class="pbar-track"><div class="pbar-fill" id="pbar-prem" style="width:0;background:var(--accent)"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">🕐 Recent Workouts</div>
+          <div class="panel-action" onclick="go('workouts',null)">View All</div>
+        </div>
+        <div id="recent-workouts-wrap">
+          <div class="empty-state">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 2a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM9.05 3a2.5 2.5 0 014.9 0H16v1h-2.05a2.5 2.5 0 01-4.9 0H7.95a2.5 2.5 0 01-4.9 0H1V3h2.05a2.5 2.5 0 014.9 0h1.1zM4.5 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
+            No workouts logged yet. <a onclick="go('workouts',null)">Log one now →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MEMBERS ══════════════════════════════════ -->
+    <div class="view" id="view-members">
+      <div class="toolbar">
+        <div class="srch-wrap">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 10-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 001.415-1.414l-3.85-3.85a1.007 1.007 0 00-.115-.099zm-5.242.656a5.5 5.5 0 110-11 5.5 5.5 0 010 11z"/></svg>
+          <input type="text" class="srch" placeholder="Search members…" oninput="filterMembers(this.value)"/>
+        </div>
+        <select class="flt" onchange="filterByStatus(this.value)">
+          <option value="">All Statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="EXPIRED">Expired</option>
+          <option value="SUSPENDED">Suspended</option>
+        </select>
+        <select class="flt" onchange="filterByPlan(this.value)">
+          <option value="">All Plans</option>
+          <option value="BASIC">Basic</option>
+          <option value="STANDARD">Standard</option>
+          <option value="PREMIUM">Premium</option>
+        </select>
+        <button class="add-btn" id="btn-add-member" onclick="openMemberModal()">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 4a.5.5 0 01.5.5v3h3a.5.5 0 010 1h-3v3a.5.5 0 01-1 0v-3h-3a.5.5 0 010-1h3v-3A.5.5 0 018 4z"/></svg>
+          Add Member
+        </button>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">👥 All Members <span class="cnt-badge" id="mem-cnt">0</span></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Member</th><th>Contact</th><th>Age/Gender</th><th>Plan</th><th>Status</th><th>Trainer</th><th>Expiry</th><th>Actions</th></tr></thead>
+            <tbody id="mem-tbody"></tbody>
+          </table>
+          <div id="members-empty" class="empty-state">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 100-6 3 3 0 000 6z"/></svg>
+            No members added yet. <a onclick="openMemberModal()">Add your first member →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TRAINERS ═════════════════════════════════ -->
+    <div class="view" id="view-trainers">
+      <div class="toolbar">
+        <div class="srch-wrap" style="max-width:300px">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 10-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 001.415-1.414l-3.85-3.85a1.007 1.007 0 00-.115-.099zm-5.242.656a5.5 5.5 0 110-11 5.5 5.5 0 010 11z"/></svg>
+          <input type="text" class="srch" placeholder="Search trainers…" oninput="filterTrainers(this.value)"/>
+        </div>
+        <button class="add-btn" id="btn-add-trainer" onclick="openTrainerModal()">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 4a.5.5 0 01.5.5v3h3a.5.5 0 010 1h-3v3a.5.5 0 01-1 0v-3h-3a.5.5 0 010-1h3v-3A.5.5 0 018 4z"/></svg>
+          Add Trainer
+        </button>
+      </div>
+      <div class="tcard-grid" id="trainer-grid"></div>
+      <div id="trainers-empty" class="empty-state" style="display:none">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H3zm5-6a3 3 0 100-6 3 3 0 000 6z"/></svg>
+        No trainers added yet. <a onclick="openTrainerModal()">Add your first trainer →</a>
+      </div>
+    </div>
+
+    <!-- ══ WORKOUTS ══════════════════════════════════ -->
+    <div class="view" id="view-workouts">
+      <div style="display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start" class="grid-form">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">🏋 Workout Log <span class="cnt-badge" id="wk-cnt">0</span></div>
+            <div>
+              <select class="flt" style="font-size:12px" onchange="filterWorkoutMember(this.value)" id="wk-filter-sel">
+                <option value="">All Members</option>
+              </select>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="tbl" id="workout-tbl">
+              <thead><tr><th>#</th><th>Member</th><th>Exercise</th><th>Duration</th><th>Calories</th><th>Date</th><th>Notes</th><th>Actions</th></tr></thead>
+              <tbody id="workout-tbody"></tbody>
+            </table>
+            <div id="workouts-empty" class="empty-state">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M11.5 2a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/></svg>
+              No workouts logged yet. Use the form to add one.
+            </div>
+          </div>
+        </div>
+
+        <!-- LOG WORKOUT FORM -->
+        <div class="form-card">
+          <div class="fsec">Log New Workout</div>
+          <div class="fg">
+            <label class="flbl">Member *</label>
+            <select class="fsel" id="wk-member">
+              <option value="">-- Select Member --</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label class="flbl">Exercise Type *</label>
+            <input type="text" class="finput" id="wk-ex" placeholder="e.g. Weight Training" list="ex-list" oninput="estimateCal()"/>
+            <datalist id="ex-list"><option>Weight Training</option><option>Cardio Running</option><option>Yoga</option><option>CrossFit</option><option>HIIT</option><option>Cycling</option><option>Swimming</option><option>Pilates</option><option>Zumba</option><option>Boxing</option></datalist>
+          </div>
+          <div class="frow2">
+            <div><label class="flbl">Duration (min) *</label><input type="number" class="finput" id="wk-dur" placeholder="45" min="1" oninput="estimateCal()"/></div>
+            <div><label class="flbl">Calories</label><input type="number" class="finput" id="wk-cal" placeholder="Est." min="0"/></div>
+          </div>
+          <div class="fg">
+            <label class="flbl">Date *</label>
+            <input type="date" class="finput" id="wk-date"/>
+          </div>
+          <div class="fg">
+            <label class="flbl">Notes</label>
+            <textarea class="ftarea" id="wk-notes" placeholder="Optional notes…" rows="2"></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn-cancel" onclick="clearWorkoutForm()">Clear</button>
+            <button class="btn-save" onclick="logWorkout()">Log Workout</button>
+          </div>
+          <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
+            <div class="mini-title" style="margin-bottom:10px">🔥 Calorie Guide</div>
+            <div class="cal-guide">
+              <div class="cal-item"><span class="cal-ex">Weight Training (1hr)</span><span class="cal-v">~420 kcal</span></div>
+              <div class="cal-item"><span class="cal-ex">Running (1hr)</span><span class="cal-v">~580 kcal</span></div>
+              <div class="cal-item"><span class="cal-ex">Yoga (1hr)</span><span class="cal-v">~240 kcal</span></div>
+              <div class="cal-item"><span class="cal-ex">CrossFit (45min)</span><span class="cal-v">~540 kcal</span></div>
+              <div class="cal-item"><span class="cal-ex">Cycling (1hr)</span><span class="cal-v">~490 kcal</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MY CLIENTS (Trainer Only) ══════════════════ -->
+    <div class="view" id="view-my-clients">
+      <div class="trainer-notice">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 118 1a7 7 0 010 14zm0 1A8 8 0 108 0a8 8 0 000 16z"/><path d="M7.002 11a1 1 0 112 0 1 1 0 01-2 0zM7.1 4.995a.905.905 0 111.8 0l-.35 3.507a.552.552 0 01-1.1 0L7.1 4.995z"/></svg>
+        Showing only members assigned to you. Contact your gym owner to manage trainer assignments.
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">👥 My Assigned Members <span class="cnt-badge" id="my-client-cnt">0</span></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Member</th><th>Contact</th><th>Plan</th><th>Status</th><th>Expiry</th><th>Actions</th></tr></thead>
+            <tbody id="my-client-tbody"></tbody>
+          </table>
+          <div id="my-clients-empty" class="empty-state">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 100-6 3 3 0 000 6z"/></svg>
+            No members assigned to you yet. Ask your gym owner to assign members.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ── iOS BOTTOM NAV ──────────────────────────────────── -->
+<nav id="bottom-nav">
+  <div class="bn-item active" id="bn-dashboard" onclick="go('dashboard',null);setBN('dashboard')">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zm8 0A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zm-8 8A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zm8 0A1.5 1.5 0 0110.5 9h3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 13.5v-3z"/></svg>
+    Home
+  </div>
+  <div class="bn-item" id="bn-members" onclick="go('members',null);setBN('members')">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 100-6 3 3 0 000 6z"/><path fill-rule="evenodd" d="M5.216 14A2.238 2.238 0 015 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 005 9c-4 0-5 3-5 4s1 1 1 1h4.216z"/><path d="M4.5 8a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg>
+    Members
+  </div>
+  <div class="bn-item" id="bn-trainers" onclick="go('trainers',null);setBN('trainers')">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H3zm5-6a3 3 0 100-6 3 3 0 000 6z"/></svg>
+    Trainers
+  </div>
+  <div class="bn-item" id="bn-workouts" onclick="go('workouts',null);setBN('workouts')">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 2a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM9.05 3a2.5 2.5 0 014.9 0H16v1h-2.05a2.5 2.5 0 01-4.9 0H7.95a2.5 2.5 0 01-4.9 0H1V3h2.05a2.5 2.5 0 014.9 0h1.1zM4.5 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
+    Workouts
+  </div>
+  <div class="bn-item hidden" id="bn-my-clients" onclick="go('my-clients',null);setBN('my-clients')">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 100-6 3 3 0 000 6z"/></svg>
+    My Clients
+  </div>
+  <div class="bn-item" id="bn-menu" onclick="toggleSidebar()">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5z"/></svg>
+    More
+  </div>
+</nav>
+
+<script>
+// ════════════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ════════════════════════════════════════════════════════
+const CAL = {'Weight Training':7,'Cardio Running':10,'Yoga':4,'CrossFit':12,'HIIT':11,'Pilates':4,'Cycling':8,'Swimming':9,'Zumba':8,'Boxing':10};
+const TRAINER_COLORS = [
+  'linear-gradient(135deg,#00C853,#4A9EFF)',
+  'linear-gradient(135deg,#B97BFF,#FF6B35)',
+  'linear-gradient(135deg,#FF6B35,#FFD600)',
+  'linear-gradient(135deg,#4A9EFF,#B97BFF)',
+  'linear-gradient(135deg,#FF4D6D,#FF6B35)',
+  'linear-gradient(135deg,#00C853,#B97BFF)',
+  'linear-gradient(135deg,#FFD600,#FF6B35)',
+];
+
+let toastTimer;
+let currentUser = null;   // email of logged-in user
+let currentGymId = null;  // gym identifier (owner email or parent gym)
+let selectedRole = 'Owner';
+
+// ════════════════════════════════════════════════════════
+// STORAGE HELPERS
+// All data is namespaced under gym id for full isolation
+// ════════════════════════════════════════════════════════
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){} }
+function load(key, def) { try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : def; } catch(e){ return def; } }
+
+// Gym-namespaced keys — ALL data goes under the gym owner's email as namespace
+function gKey(k) { return `gympt_${currentGymId}_${k}`; }
+function getMembers()  { return load(gKey('members'), []); }
+function saveMembers(d){ save(gKey('members'), d); }
+function getTrainers() { return load(gKey('trainers'), []); }
+function saveTrainers(d){ save(gKey('trainers'), d); }
+function getWorkouts() { return load(gKey('workouts'), []); }
+function saveWorkouts(d){ save(gKey('workouts'), d); }
+
+// Global accounts store
+function getAccounts() { return load('gympt_accounts', {}); }
+function saveAccounts(a){ save('gympt_accounts', a); }
+
+// ════════════════════════════════════════════════════════
+// ROLE HELPERS
+// ════════════════════════════════════════════════════════
+function getMyAccount() {
+  return getAccounts()[currentUser] || {};
+}
+function isOwner()   { return getMyAccount().role === 'Owner'; }
+function isManager() { return getMyAccount().role === 'Manager'; }
+function isTrainer() { return getMyAccount().role === 'Trainer'; }
+function canEdit()   { return isOwner() || isManager(); }
+function getMyTrainerName() {
+  // find matching trainer record by email
+  const acc = getMyAccount();
+  const trainers = getTrainers();
+  const t = trainers.find(t => t.email && t.email.toLowerCase() === acc.email.toLowerCase());
+  return t ? t.name : acc.name;
+}
+
+// ════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════
+function switchAuthTab(tab) {
+  document.getElementById('login-form').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('signup-form').style.display = tab === 'signup' ? '' : 'none';
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+  document.getElementById('auth-foot').innerHTML = tab === 'login'
+    ? "Don't have an account? <span onclick=\"switchAuthTab('signup')\">Sign Up</span>"
+    : "Already have an account? <span onclick=\"switchAuthTab('login')\">Login</span>";
+  document.getElementById('auth-err').classList.remove('show');
+  if (tab === 'signup') populateGymSelect();
+}
+
+function populateGymSelect() {
+  const accounts = getAccounts();
+  const sel = document.getElementById('s-gym-select');
+  sel.innerHTML = '<option value="">-- Select a gym --</option>';
+  // Only owners have gyms
+  Object.values(accounts).filter(a => a.role === 'Owner').forEach(a => {
+    sel.innerHTML += `<option value="${a.email}">${a.gym}</option>`;
+  });
+}
+
+function selectRole(r) {
+  selectedRole = r;
+  ['Owner','Manager','Trainer'].forEach(role => {
+    const el = document.getElementById('role-' + role.toLowerCase());
+    if (el) el.classList.toggle('sel', role === r);
+  });
+  // Show/hide gym fields
+  const isOwnerRole = r === 'Owner';
+  document.getElementById('gym-name-field').style.display = isOwnerRole ? '' : 'none';
+  document.getElementById('gym-select-field').style.display = isOwnerRole ? 'none' : '';
+  if (!isOwnerRole) populateGymSelect();
+}
+
+function showAuthErr(msg) {
+  const e = document.getElementById('auth-err');
+  e.textContent = msg; e.classList.add('show');
+}
+
+function doLogin() {
+  const email = document.getElementById('l-user').value.trim().toLowerCase();
+  const pass = document.getElementById('l-pass').value;
+  if (!email || !pass) { showAuthErr('Please enter email and password.'); return; }
+  const accounts = getAccounts();
+  const match = accounts[email];
+  if (!match || match.password !== pass) { showAuthErr('Invalid email or password.'); return; }
+  currentUser = email;
+  // Determine gym namespace: owners use their own email, others use parentGym
+  currentGymId = match.role === 'Owner' ? email : match.parentGym;
+  save('gympt_session', email);
+  loadDashboard(match);
+}
+
+function doSignup() {
+  const name = document.getElementById('s-name').value.trim();
+  const email = document.getElementById('s-email').value.trim().toLowerCase();
+  const pass = document.getElementById('s-pass').value;
+  if (!name || !email || !pass) { showAuthErr('Please fill in all fields.'); return; }
+  if (pass.length < 6) { showAuthErr('Password must be at least 6 characters.'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAuthErr('Please enter a valid email.'); return; }
+  const accounts = getAccounts();
+  if (accounts[email]) { showAuthErr('An account with this email already exists.'); return; }
+
+  let gymName = '', parentGym = '';
+  if (selectedRole === 'Owner') {
+    gymName = document.getElementById('s-gym').value.trim();
+    if (!gymName) { showAuthErr('Please enter your gym name.'); return; }
+    parentGym = email; // owner IS the gym
+  } else {
+    parentGym = document.getElementById('s-gym-select').value;
+    if (!parentGym) { showAuthErr('Please select your gym.'); return; }
+    const parentAcc = accounts[parentGym];
+    gymName = parentAcc ? parentAcc.gym : 'Unknown Gym';
+  }
+
+  accounts[email] = { email, name, password: pass, role: selectedRole, gym: gymName, parentGym };
+  saveAccounts(accounts);
+  currentUser = email;
+  currentGymId = selectedRole === 'Owner' ? email : parentGym;
+  save('gympt_session', email);
+  loadDashboard(accounts[email]);
+}
+
+function loadDashboard(user) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('sb-name').textContent = user.name;
+  document.getElementById('sb-role').textContent = user.role;
+  document.getElementById('sb-ava').textContent = user.name[0].toUpperCase();
+  document.getElementById('sb-gym-badge').textContent = '🏋 ' + user.gym;
+  document.getElementById('gym-brand').textContent = user.gym;
+  document.getElementById('topbar-gym').textContent = '🏋 ' + user.gym;
+  const mobChip = document.getElementById('mob-gym-chip');
+  if (mobChip) mobChip.textContent = '🏋 ' + user.gym;
+
+  const roleIcon = {Owner:'👑',Manager:'🏢',Trainer:'🏋'}[user.role] || '👤';
+  document.getElementById('tb-role-badge').textContent = `${roleIcon} ${user.role}`;
+
+  applyRolePermissions(user.role);
+  renderAll();
+  initChart();
+}
+
+function applyRolePermissions(role) {
+  const isT = role === 'Trainer';
+  document.getElementById('nav-my-clients').classList.toggle('hidden', !isT);
+  // bottom nav
+  const bnMC = document.getElementById('bn-my-clients');
+  if (bnMC) bnMC.classList.toggle('hidden', !isT);
+  document.getElementById('btn-add-member').style.display = isT ? 'none' : '';
+  document.getElementById('btn-add-trainer').style.display = isT ? 'none' : '';
+  document.getElementById('qa-add-member').style.display = isT ? 'none' : '';
+  document.getElementById('qa-add-trainer').style.display = isT ? 'none' : '';
+}
+
+function setBN(page) {
+  document.querySelectorAll('.bn-item').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('bn-' + page);
+  if (el) el.classList.add('active');
+}
+
+function doLogout() {
+  if (!confirm('Logout from GymTracker Pro?')) return;
+  currentUser = null;
+  currentGymId = null;
+  save('gympt_session', null);
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('l-user').value = '';
+  document.getElementById('l-pass').value = '';
+  document.getElementById('auth-err').classList.remove('show');
+  switchAuthTab('login');
+  selectRole('Owner');
+}
+
+// ════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════
+function go(page, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const view = document.getElementById('view-' + page);
+  if (view) view.classList.add('active');
+  const titles = {dashboard:'Dashboard',members:'Members',trainers:'Trainers',workouts:'Workouts','my-clients':'My Clients'};
+  const title = titles[page] || page;
+  document.getElementById('topbar-title').textContent = title;
+  const mobTitle = document.getElementById('mob-title');
+  if (mobTitle) mobTitle.textContent = title;
+  if (el) {
+    el.classList.add('active');
+  } else {
+    document.querySelectorAll('.nav-item').forEach(n => { if (n.dataset.page === page) n.classList.add('active'); });
+  }
+  closeSidebar();
+  if (page === 'workouts') refreshWorkoutMemberSelect();
+  if (page === 'my-clients') renderMyClients();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  if (window.innerWidth < 900) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════
+function toast(msg, isError) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+}
+
+// ════════════════════════════════════════════════════════
+// MODAL
+// ════════════════════════════════════════════════════════
+function openModal(title, body) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+  if (window.innerWidth >= 900) document.getElementById('overlay').classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════════
+// MEMBERS
+// ════════════════════════════════════════════════════════
+function openMemberModal(editId) {
+  if (!canEdit()) { toast('You do not have permission to edit members.', true); return; }
+  const trainers = getTrainers();
+  const trainerOpts = trainers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+  let m = editId !== undefined ? getMembers().find(x => x.id === editId) : null;
+  const editing = !!m;
+  const v = m || {};
+  openModal(editing ? 'Edit Member' : 'Add New Member', `
+    <div class="frow2">
+      <div class="fg"><label class="flbl">Full Name *</label><input class="finput" id="m-name" value="${v.name||''}" placeholder="e.g. Rahul Sharma"/></div>
+      <div class="fg"><label class="flbl">Email</label><input class="finput" id="m-email" type="email" value="${v.email||''}" placeholder="email@example.com"/></div>
+    </div>
+    <div class="frow3">
+      <div class="fg"><label class="flbl">Phone</label><input class="finput" id="m-phone" value="${v.phone||''}" placeholder="10 digits"/></div>
+      <div class="fg"><label class="flbl">Age</label><input class="finput" id="m-age" type="number" value="${v.age||''}" placeholder="25" min="5"/></div>
+      <div class="fg"><label class="flbl">Gender</label><select class="fsel" id="m-gender"><option ${v.gender==='Male'?'selected':''}>Male</option><option ${v.gender==='Female'?'selected':''}>Female</option><option ${v.gender==='Other'?'selected':''}>Other</option></select></div>
+    </div>
+    <div class="frow3">
+      <div class="fg"><label class="flbl">Plan</label><select class="fsel" id="m-plan"><option ${v.plan==='BASIC'?'selected':''}>BASIC</option><option ${v.plan==='STANDARD'?'selected':''}>STANDARD</option><option ${v.plan==='PREMIUM'?'selected':''}>PREMIUM</option></select></div>
+      <div class="fg"><label class="flbl">Status</label><select class="fsel" id="m-status"><option ${v.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${v.status==='EXPIRED'?'selected':''}>EXPIRED</option><option ${v.status==='SUSPENDED'?'selected':''}>SUSPENDED</option></select></div>
+      <div class="fg"><label class="flbl">Trainer</label><select class="fsel" id="m-trainer"><option value="">None</option>${trainerOpts}</select></div>
+    </div>
+    <div class="frow2">
+      <div class="fg"><label class="flbl">Join Date</label><input class="finput" id="m-join" type="date" value="${v.joinDate||''}"/></div>
+      <div class="fg"><label class="flbl">Expiry Date</label><input class="finput" id="m-expiry" type="date" value="${v.expiry||''}"/></div>
+    </div>
+    <div class="fg"><label class="flbl">Address / Notes</label><textarea class="ftarea" id="m-notes" rows="2" placeholder="Optional address or notes">${v.notes||''}</textarea></div>
+    <div class="form-actions" style="margin-top:10px">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveMember(${editing ? `'${editId}'` : 'null'})">${editing ? 'Update Member' : 'Add Member'}</button>
+    </div>
+  `);
+  setDefaultDates();
+  if (m && m.trainer) {
+    setTimeout(() => {
+      const sel = document.getElementById('m-trainer');
+      if (sel) for (let o of sel.options) { if (o.value === m.trainer) { o.selected = true; break; } }
+    }, 50);
+  }
+}
+
+function saveMember(editId) {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { toast('Name is required.', true); return; }
+  const mem = {
+    id: editId || ('m_' + Date.now()),
+    name,
+    email: document.getElementById('m-email').value.trim(),
+    phone: document.getElementById('m-phone').value.trim(),
+    age: document.getElementById('m-age').value,
+    gender: document.getElementById('m-gender').value,
+    plan: document.getElementById('m-plan').value,
+    status: document.getElementById('m-status').value,
+    trainer: document.getElementById('m-trainer').value,
+    joinDate: document.getElementById('m-join').value,
+    expiry: document.getElementById('m-expiry').value,
+    notes: document.getElementById('m-notes').value.trim(),
+  };
+  const members = getMembers();
+  if (editId) {
+    const idx = members.findIndex(m => m.id === editId);
+    if (idx >= 0) members[idx] = mem;
+    toast('Member updated successfully!');
+  } else {
+    members.push(mem);
+    toast('Member added successfully!');
+  }
+  saveMembers(members);
+  closeModal();
+  renderMembers();
+  updateDashboard();
+  refreshWorkoutMemberSelect();
+}
+
+function renderMembers() {
+  const members = getMembers();
+  const tbody = document.getElementById('mem-tbody');
+  const empty = document.getElementById('members-empty');
+  tbody.innerHTML = '';
+  if (members.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  const editable = canEdit();
+  members.forEach((m, i) => {
+    const planCls = {BASIC:'bdg-basic',STANDARD:'bdg-standard',PREMIUM:'bdg-premium'}[m.plan] || 'bdg-basic';
+    const stsCls = {ACTIVE:'bdg-active',EXPIRED:'bdg-expired',SUSPENDED:'bdg-suspended'}[m.status] || 'bdg-active';
+    const row = document.createElement('tr');
+    row.dataset.status = m.status;
+    row.dataset.plan = m.plan;
+    row.innerHTML = `<td style="color:var(--t3)">${i+1}</td>
+      <td><div class="mem-cell"><div class="ava">${m.name[0].toUpperCase()}</div><div><div class="mem-name">${m.name}</div><div class="sub-text">${m.email||'—'}</div></div></div></td>
+      <td>${m.phone||'—'}</td>
+      <td>${m.age ? m.age+' / '+m.gender[0] : '—'}</td>
+      <td><span class="bdg ${planCls}">${m.plan}</span></td>
+      <td><span class="bdg ${stsCls}">${m.status}</span></td>
+      <td>${m.trainer||'—'}</td>
+      <td>${m.expiry ? formatDate(m.expiry) : '—'}</td>
+      <td><div class="acts">
+        <div class="act v-btn" onclick="viewMemberDetail('${m.id}')">👁</div>
+        ${editable ? `<div class="act e-btn" onclick="openMemberModal('${m.id}')">✎</div>
+        <div class="act d-btn" onclick="deleteMember('${m.id}')">🗑</div>` : ''}
+      </div></td>`;
+    tbody.appendChild(row);
+  });
+  document.getElementById('mem-cnt').textContent = members.length;
+}
+
+function deleteMember(id) {
+  if (!canEdit()) return;
+  if (!confirm('Delete this member? This cannot be undone.')) return;
+  saveMembers(getMembers().filter(m => m.id !== id));
+  renderMembers();
+  updateDashboard();
+  refreshWorkoutMemberSelect();
+  toast('Member deleted.');
+}
+
+function viewMemberDetail(id) {
+  const m = getMembers().find(x => x.id === id);
+  if (!m) return;
+  const statusCls = {ACTIVE:'bdg-active',EXPIRED:'bdg-expired',SUSPENDED:'bdg-suspended'}[m.status] || 'bdg-active';
+  const planCls = {BASIC:'bdg-basic',STANDARD:'bdg-standard',PREMIUM:'bdg-premium'}[m.plan] || 'bdg-basic';
+  openModal('Member Profile', `
+    <div style="text-align:center;padding:16px 0 20px;border-bottom:1px solid var(--border);margin-bottom:16px">
+      <div class="ava ava-lg" style="margin:0 auto 10px">${m.name[0].toUpperCase()}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px">${m.name}</div>
+      <span class="bdg ${statusCls}">${m.status}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+      ${[['📧 Email',m.email||'—'],['📞 Phone',m.phone||'—'],['🎂 Age',m.age?(m.age+' yrs'):'—'],['⚧ Gender',m.gender||'—'],['🏅 Plan',`<span class="bdg ${planCls}">${m.plan}</span>`],['🏋 Trainer',m.trainer||'—'],['📅 Joined',m.joinDate?formatDate(m.joinDate):'—'],['⏳ Expiry',m.expiry?formatDate(m.expiry):'—']].map(([l,v])=>`<div style="padding:10px 12px;background:var(--bg4);border-radius:8px"><div style="font-size:11px;color:var(--t3);margin-bottom:4px">${l}</div><div style="font-weight:500;color:var(--t1)">${v}</div></div>`).join('')}
+    </div>
+    ${m.notes ? `<div style="margin-top:12px;padding:10px 14px;background:var(--bg4);border-radius:8px;font-size:12.5px;color:var(--t2)">${m.notes}</div>` : ''}
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn-cancel" onclick="closeModal()">Close</button>
+      ${canEdit() ? `<button class="btn-save" onclick="closeModal();openMemberModal('${m.id}')">Edit Member</button>` : ''}
+    </div>
+  `);
+}
+
+// ════════════════════════════════════════════════════════
+// MY CLIENTS (Trainer View)
+// ════════════════════════════════════════════════════════
+function renderMyClients() {
+  const myName = getMyTrainerName();
+  const members = getMembers().filter(m => m.trainer === myName);
+  const tbody = document.getElementById('my-client-tbody');
+  const empty = document.getElementById('my-clients-empty');
+  const cnt = document.getElementById('my-client-cnt');
+  tbody.innerHTML = '';
+  cnt.textContent = members.length;
+  if (members.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  members.forEach((m, i) => {
+    const planCls = {BASIC:'bdg-basic',STANDARD:'bdg-standard',PREMIUM:'bdg-premium'}[m.plan] || 'bdg-basic';
+    const stsCls = {ACTIVE:'bdg-active',EXPIRED:'bdg-expired',SUSPENDED:'bdg-suspended'}[m.status] || 'bdg-active';
+    const row = document.createElement('tr');
+    row.innerHTML = `<td style="color:var(--t3)">${i+1}</td>
+      <td><div class="mem-cell"><div class="ava">${m.name[0].toUpperCase()}</div><div><div class="mem-name">${m.name}</div><div class="sub-text">${m.email||'—'}</div></div></div></td>
+      <td>${m.phone||'—'}</td>
+      <td><span class="bdg ${planCls}">${m.plan}</span></td>
+      <td><span class="bdg ${stsCls}">${m.status}</span></td>
+      <td>${m.expiry ? formatDate(m.expiry) : '—'}</td>
+      <td><div class="acts">
+        <div class="act v-btn" onclick="viewMemberDetail('${m.id}')">👁</div>
+      </div></td>`;
+    tbody.appendChild(row);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// TRAINERS
+// ════════════════════════════════════════════════════════
+function openTrainerModal(editId) {
+  if (!canEdit()) { toast('You do not have permission to edit trainers.', true); return; }
+  let t = editId !== undefined ? getTrainers().find(x => x.id === editId) : null;
+  const editing = !!t;
+  const v = t || {};
+  openModal(editing ? 'Edit Trainer' : 'Add New Trainer', `
+    <div class="frow2">
+      <div class="fg"><label class="flbl">Full Name *</label><input class="finput" id="t-name" value="${v.name||''}" placeholder="e.g. Raj Kumar"/></div>
+      <div class="fg"><label class="flbl">Email</label><input class="finput" id="t-email" type="email" value="${v.email||''}" placeholder="trainer@gym.com"/></div>
+    </div>
+    <div class="frow2">
+      <div class="fg"><label class="flbl">Phone</label><input class="finput" id="t-phone" value="${v.phone||''}" placeholder="10 digits"/></div>
+      <div class="fg"><label class="flbl">Date of Birth</label><input class="finput" id="t-dob" type="date" value="${v.dob||''}"/></div>
+    </div>
+    <div class="fg">
+      <label class="flbl">Specialization *</label>
+      <input class="finput" id="t-spec" value="${v.specialization||''}" placeholder="e.g. CrossFit, Yoga, Strength"/>
+      <div style="margin-top:8px">
+        <div class="spec-tags">
+          ${['Strength & Conditioning','Yoga & Flexibility','CrossFit & HIIT','Cardio & Weight Loss','Pilates & Core','Bodybuilding','Swimming','Zumba & Dance'].map(s=>`<span class="spec-tag" onclick="document.getElementById('t-spec').value='${s}'">${s}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="frow3">
+      <div class="fg"><label class="flbl">Experience (yrs)</label><input class="finput" id="t-exp" type="number" value="${v.experience||''}" placeholder="5" min="0"/></div>
+      <div class="fg"><label class="flbl">Salary (₹/month)</label><input class="finput" id="t-salary" type="number" value="${v.salary||''}" placeholder="45000"/></div>
+      <div class="fg"><label class="flbl">Status</label><select class="fsel" id="t-status"><option ${v.status==='ACTIVE'||!v.status?'selected':''}>ACTIVE</option><option ${v.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div>
+    </div>
+    <div class="frow2">
+      <div class="fg"><label class="flbl">Date Joined</label><input class="finput" id="t-join" type="date" value="${v.joinDate||''}"/></div>
+      <div class="fg"><label class="flbl">Cert / Qualification</label><input class="finput" id="t-cert" value="${v.cert||''}" placeholder="e.g. ACE, NSCA, ISSA"/></div>
+    </div>
+    <div class="fg"><label class="flbl">Address</label><input class="finput" id="t-addr" value="${v.address||''}" placeholder="Trainer's address"/></div>
+    <div class="fg"><label class="flbl">Bio / Notes</label><textarea class="ftarea" id="t-bio" rows="2" placeholder="Short bio or notes">${v.bio||''}</textarea></div>
+    <div class="form-actions" style="margin-top:10px">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveTrainer(${editing ? `'${editId}'` : 'null'})">${editing ? 'Update Trainer' : 'Add Trainer'}</button>
+    </div>
+  `);
+  setDefaultDates();
+}
+
+function saveTrainer(editId) {
+  const name = document.getElementById('t-name').value.trim();
+  if (!name) { toast('Trainer name is required.', true); return; }
+  const spec = document.getElementById('t-spec').value.trim();
+  if (!spec) { toast('Specialization is required.', true); return; }
+  const trainers = getTrainers();
+  const colorIdx = editId ? (trainers.findIndex(t=>t.id===editId) % TRAINER_COLORS.length) : (trainers.length % TRAINER_COLORS.length);
+  const tr = {
+    id: editId || ('t_' + Date.now()),
+    name,
+    email: document.getElementById('t-email').value.trim(),
+    phone: document.getElementById('t-phone').value.trim(),
+    dob: document.getElementById('t-dob').value,
+    specialization: spec,
+    experience: document.getElementById('t-exp').value,
+    salary: document.getElementById('t-salary').value,
+    status: document.getElementById('t-status').value,
+    joinDate: document.getElementById('t-join').value,
+    cert: document.getElementById('t-cert').value.trim(),
+    address: document.getElementById('t-addr').value.trim(),
+    bio: document.getElementById('t-bio').value.trim(),
+    colorIdx,
+  };
+  let updated;
+  if (editId) {
+    updated = trainers.map(t => t.id === editId ? {...tr, colorIdx: t.colorIdx} : t);
+    toast('Trainer updated successfully!');
+  } else {
+    updated = [...trainers, tr];
+    toast('Trainer added successfully!');
+  }
+  saveTrainers(updated);
+  closeModal();
+  renderTrainers();
+  updateDashboard();
+}
+
+function renderTrainers() {
+  const trainers = getTrainers();
+  const grid = document.getElementById('trainer-grid');
+  const empty = document.getElementById('trainers-empty');
+  grid.innerHTML = '';
+  if (trainers.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  const memberCounts = {};
+  getMembers().forEach(m => { if (m.trainer) memberCounts[m.trainer] = (memberCounts[m.trainer]||0)+1; });
+  const editable = canEdit();
+  trainers.forEach(t => {
+    const color = TRAINER_COLORS[t.colorIdx % TRAINER_COLORS.length];
+    const stsCls = t.status === 'ACTIVE' ? 'bdg-active' : 'bdg-inactive';
+    const sal = t.salary ? '₹'+(parseInt(t.salary)/1000).toFixed(0)+'k' : '—';
+    const card = document.createElement('div');
+    card.className = 'tcard';
+    card.innerHTML = `
+      <div class="tcard-head">
+        <div class="tava" style="background:${color}">${t.name[0].toUpperCase()}</div>
+        <span class="bdg ${stsCls}">${t.status||'ACTIVE'}</span>
+      </div>
+      <div class="tcard-body">
+        <div class="tcard-name">${t.name}</div>
+        <div class="tcard-spec">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>
+          ${t.specialization}
+        </div>
+        <div class="tcard-contact">
+          ${t.phone ? `<span>📞 ${t.phone}</span>` : ''}
+          ${t.email ? `<span>📧 ${t.email}</span>` : ''}
+          ${t.cert ? `<span>🎓 ${t.cert}</span>` : ''}
+        </div>
+        <div class="tmeta">
+          <div class="tmi"><div class="tmi-lbl">Exp</div><div class="tmi-val">${t.experience||'—'}${t.experience?' yrs':''}</div></div>
+          <div class="tmi"><div class="tmi-lbl">Members</div><div class="tmi-val">${memberCounts[t.name]||0}</div></div>
+          <div class="tmi"><div class="tmi-lbl">Salary</div><div class="tmi-val" style="font-size:14px">${editable ? sal : '—'}</div></div>
+        </div>
+      </div>
+      <div class="tcard-foot">
+        <div class="act v-btn" onclick="viewTrainerDetail('${t.id}')">👁</div>
+        ${editable ? `<div class="act e-btn" onclick="openTrainerModal('${t.id}')">✎</div>
+        <div class="act d-btn" onclick="deleteTrainer('${t.id}')">🗑</div>` : ''}
+      </div>`;
+    grid.appendChild(card);
+  });
+  document.getElementById('c-trainers').textContent = trainers.length;
+}
+
+function deleteTrainer(id) {
+  if (!canEdit()) return;
+  if (!confirm('Delete this trainer? This cannot be undone.')) return;
+  saveTrainers(getTrainers().filter(t => t.id !== id));
+  renderTrainers();
+  updateDashboard();
+  toast('Trainer deleted.');
+}
+
+function viewTrainerDetail(id) {
+  const t = getTrainers().find(x => x.id === id);
+  if (!t) return;
+  const stsCls = t.status === 'ACTIVE' ? 'bdg-active' : 'bdg-inactive';
+  const color = TRAINER_COLORS[t.colorIdx % TRAINER_COLORS.length];
+  const memberCounts = {};
+  getMembers().forEach(m => { if (m.trainer) memberCounts[m.trainer] = (memberCounts[m.trainer]||0)+1; });
+  openModal('Trainer Profile', `
+    <div style="text-align:center;padding:16px 0 20px;border-bottom:1px solid var(--border);margin-bottom:16px">
+      <div class="tava" style="background:${color};margin:0 auto 10px;width:60px;height:60px;font-size:24px">${t.name[0].toUpperCase()}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px">${t.name}</div>
+      <span class="bdg ${stsCls}">${t.status||'ACTIVE'}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+      ${[
+        ['🏋 Specialization', t.specialization||'—'],
+        ['📞 Phone', t.phone||'—'],
+        ['📧 Email', t.email||'—'],
+        ['⏱ Experience', t.experience ? t.experience+' years' : '—'],
+        canEdit() ? ['💰 Salary', t.salary ? '₹'+parseInt(t.salary).toLocaleString()+'/mo' : '—'] : ['💰 Salary', '—'],
+        ['🎓 Certification', t.cert||'—'],
+        ['📅 Joined', t.joinDate ? formatDate(t.joinDate) : '—'],
+        ['👥 Members Assigned', memberCounts[t.name]||0],
+        ['🏠 Address', t.address||'—'],
+        ['🎂 Date of Birth', t.dob ? formatDate(t.dob) : '—'],
+      ].map(([l,v])=>`<div style="padding:10px 12px;background:var(--bg4);border-radius:8px"><div style="font-size:11px;color:var(--t3);margin-bottom:4px">${l}</div><div style="font-weight:500;color:var(--t1)">${v}</div></div>`).join('')}
+    </div>
+    ${t.bio ? `<div style="margin-top:12px;padding:10px 14px;background:var(--bg4);border-radius:8px;font-size:12.5px;color:var(--t2)"><strong style="color:var(--t3);font-size:10px;letter-spacing:1px;text-transform:uppercase">Bio</strong><br/>${t.bio}</div>` : ''}
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn-cancel" onclick="closeModal()">Close</button>
+      ${canEdit() ? `<button class="btn-save" onclick="closeModal();openTrainerModal('${t.id}')">Edit Trainer</button>` : ''}
+    </div>
+  `);
+}
+
+// ════════════════════════════════════════════════════════
+// WORKOUTS
+// ════════════════════════════════════════════════════════
+function refreshWorkoutMemberSelect() {
+  let members = getMembers();
+  // Trainers only see their assigned members
+  if (isTrainer()) {
+    const myName = getMyTrainerName();
+    members = members.filter(m => m.trainer === myName);
+  }
+  const sel = document.getElementById('wk-member');
+  const fsel = document.getElementById('wk-filter-sel');
+  if (!sel) return;
+  const curVal = sel.value;
+  sel.innerHTML = '<option value="">-- Select Member --</option>';
+  fsel.innerHTML = '<option value="">All Members</option>';
+  members.forEach(m => {
+    sel.innerHTML += `<option value="${m.name}">${m.name}</option>`;
+    fsel.innerHTML += `<option value="${m.name}">${m.name}</option>`;
+  });
+  sel.value = curVal;
+}
+
+function logWorkout() {
+  const mem = document.getElementById('wk-member').value;
+  const ex = document.getElementById('wk-ex').value.trim();
+  const dur = document.getElementById('wk-dur').value;
+  if (!mem || !ex || !dur) { toast('Please fill all required fields.', true); return; }
+  const cal = document.getElementById('wk-cal').value || Math.round((CAL[ex]||7)*parseInt(dur));
+  const date = document.getElementById('wk-date').value || new Date().toISOString().split('T')[0];
+  const notes = document.getElementById('wk-notes').value.trim();
+  const wk = {
+    id: 'w_' + Date.now(),
+    member: mem,
+    exercise: ex,
+    duration: dur,
+    calories: cal,
+    date,
+    notes,
+    loggedBy: currentUser,
+  };
+  saveWorkouts([...getWorkouts(), wk]);
+  clearWorkoutForm();
+  renderWorkouts();
+  updateDashboard();
+  toast('Workout logged successfully!');
+}
+
+function clearWorkoutForm() {
+  ['wk-member','wk-ex','wk-dur','wk-cal','wk-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+function estimateCal() {
+  const ex = document.getElementById('wk-ex').value.trim();
+  const dur = parseInt(document.getElementById('wk-dur').value) || 0;
+  if (ex && dur && CAL[ex]) {
+    document.getElementById('wk-cal').value = Math.round(CAL[ex] * dur);
+  }
+}
+
+function renderWorkouts() {
+  let workouts = getWorkouts();
+  // Trainers only see workouts for their members
+  if (isTrainer()) {
+    const myName = getMyTrainerName();
+    const myMemberNames = getMembers().filter(m => m.trainer === myName).map(m => m.name);
+    workouts = workouts.filter(w => myMemberNames.includes(w.member));
+  }
+  const tbody = document.getElementById('workout-tbody');
+  const empty = document.getElementById('workouts-empty');
+  const cntBadge = document.getElementById('wk-cnt');
+  tbody.innerHTML = '';
+  cntBadge.textContent = workouts.length;
+  if (workouts.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  const canDel = canEdit();
+  [...workouts].reverse().forEach((w, i) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td style="color:var(--t3)">${workouts.length - i}</td>
+      <td><div class="mem-cell"><div class="ava">${w.member[0].toUpperCase()}</div><span class="mem-name">${w.member}</span></div></td>
+      <td><span class="ex-tag">${w.exercise}</span></td>
+      <td class="dur-val">${w.duration} min</td>
+      <td class="cal-val">${w.calories} kcal</td>
+      <td>${formatDate(w.date)}</td>
+      <td class="sub-text">${w.notes||'—'}</td>
+      <td><div class="acts">
+        ${canDel || w.loggedBy === currentUser ? `<div class="act d-btn" onclick="deleteWorkout('${w.id}')">🗑</div>` : ''}
+      </div></td>`;
+    tbody.appendChild(row);
+  });
+}
+
+function deleteWorkout(id) {
+  if (!confirm('Delete this workout entry?')) return;
+  saveWorkouts(getWorkouts().filter(w => w.id !== id));
+  renderWorkouts();
+  updateDashboard();
+  toast('Workout deleted.');
+}
+
+// ════════════════════════════════════════════════════════
+// FILTERS
+// ════════════════════════════════════════════════════════
+function filterMembers(q) {
+  const rows = document.querySelectorAll('#mem-tbody tr');
+  let vis = 0;
+  rows.forEach(r => {
+    const show = r.textContent.toLowerCase().includes(q.toLowerCase());
+    r.style.display = show ? '' : 'none';
+    if (show) vis++;
+  });
+  document.getElementById('members-empty').style.display = vis === 0 && q ? '' : (rows.length === 0 ? '' : 'none');
+}
+
+function filterByStatus(val) {
+  const rows = document.querySelectorAll('#mem-tbody tr');
+  rows.forEach(r => { r.style.display = (!val || r.dataset.status === val) ? '' : 'none'; });
+}
+
+function filterByPlan(val) {
+  const rows = document.querySelectorAll('#mem-tbody tr');
+  rows.forEach(r => { r.style.display = (!val || r.dataset.plan === val) ? '' : 'none'; });
+}
+
+function filterTrainers(q) {
+  const cards = document.querySelectorAll('#trainer-grid .tcard');
+  cards.forEach(c => { c.style.display = c.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none'; });
+}
+
+function filterWorkoutMember(val) {
+  const rows = document.querySelectorAll('#workout-tbody tr');
+  rows.forEach(r => { r.style.display = (!val || r.textContent.includes(val)) ? '' : 'none'; });
+}
+
+// ════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════
+function updateDashboard() {
+  const members = getMembers();
+  const trainers = getTrainers();
+  const workouts = getWorkouts();
+  const now = new Date();
+
+  document.getElementById('c-members').textContent = members.length;
+  const active = members.filter(m => m.status === 'ACTIVE').length;
+  document.getElementById('active-members-sub').textContent = active + ' active';
+
+  const activeTr = trainers.filter(t => t.status !== 'INACTIVE').length;
+  document.getElementById('c-trainers').textContent = trainers.length;
+  document.getElementById('active-trainers-sub').textContent = activeTr + ' active';
+
+  document.getElementById('c-workouts').textContent = workouts.length;
+  const thisMonth = workouts.filter(w => {
+    const d = new Date(w.date);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length;
+  document.getElementById('workouts-sub').textContent = thisMonth + ' this month';
+
+  const avg = members.length ? (workouts.length / members.length).toFixed(1) : '0';
+  document.getElementById('c-avg').textContent = avg;
+
+  // Plan breakdown
+  const total = Math.max(members.length, 1);
+  const basic = members.filter(m => m.plan === 'BASIC').length;
+  const std = members.filter(m => m.plan === 'STANDARD').length;
+  const prem = members.filter(m => m.plan === 'PREMIUM').length;
+  document.getElementById('plan-basic-cnt').textContent = basic + ' members';
+  document.getElementById('plan-std-cnt').textContent = std + ' members';
+  document.getElementById('plan-prem-cnt').textContent = prem + ' members';
+  document.getElementById('pbar-basic').style.width = Math.round(basic/total*100) + '%';
+  document.getElementById('pbar-std').style.width = Math.round(std/total*100) + '%';
+  document.getElementById('pbar-prem').style.width = Math.round(prem/total*100) + '%';
+
+  // Recent workouts
+  const rw = document.getElementById('recent-workouts-wrap');
+  const recentWorkouts = isTrainer() ? (() => {
+    const myName = getMyTrainerName();
+    const myMembers = getMembers().filter(m => m.trainer === myName).map(m => m.name);
+    return workouts.filter(w => myMembers.includes(w.member));
+  })() : workouts;
+
+  if (recentWorkouts.length === 0) {
+    rw.innerHTML = '<div class="empty-state"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 2a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/></svg>No workouts logged yet. <a onclick="go(\'workouts\',null)">Log one now →</a></div>';
+  } else {
+    const recent = [...recentWorkouts].reverse().slice(0, 5);
+    rw.innerHTML = `<table class="tbl"><thead><tr><th>Member</th><th>Exercise</th><th>Duration</th><th>Calories</th><th>Date</th></tr></thead><tbody>${
+      recent.map(w => `<tr><td><div class="mem-cell"><div class="ava">${w.member[0].toUpperCase()}</div><span class="mem-name">${w.member}</span></div></td><td><span class="ex-tag">${w.exercise}</span></td><td class="dur-val">${w.duration} min</td><td class="cal-val">${w.calories} kcal</td><td>${formatDate(w.date)}</td></tr>`).join('')
+    }</tbody></table>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════
+function formatDate(d) {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+  } catch(e){ return d; }
+}
+
+function setDefaultDates() {
+  setTimeout(() => {
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('#modal input[type="date"]').forEach(i => { if (!i.value) i.value = today; });
+  }, 50);
+}
+
+function renderAll() {
+  renderMembers();
+  renderTrainers();
+  renderWorkouts();
+  updateDashboard();
+  refreshWorkoutMemberSelect();
+}
+
+function initChart() {
+  const workouts = getWorkouts();
+  const now = new Date();
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ m: d.toLocaleString('default', { month: 'short' }), year: d.getFullYear(), month: d.getMonth(), v: 0 });
+  }
+  workouts.forEach(w => {
+    const d = new Date(w.date);
+    const mm = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth());
+    if (mm) mm.v++;
+  });
+  const max = Math.max(...months.map(d => d.v), 1);
+  const chart = document.getElementById('barChart');
+  chart.innerHTML = '';
+  months.forEach((d, i) => {
+    const g = document.createElement('div');
+    g.className = 'bar-g';
+    const h = Math.round((d.v / max) * 165);
+    const isLast = i === months.length - 1;
+    g.innerHTML = `<div class="bar" style="height:0;opacity:0.82;background:${isLast?'#FF6B35':'rgba(255,107,53,.55)'}" data-h="${h}" title="${d.v} workouts"></div><div class="bar-lbl">${d.m}</div>`;
+    chart.appendChild(g);
+  });
+  setTimeout(() => {
+    chart.querySelectorAll('.bar').forEach((b, i) => {
+      setTimeout(() => {
+        b.style.transition = 'height 0.6s cubic-bezier(.4,0,.2,1)';
+        b.style.height = b.dataset.h + 'px';
+      }, i * 80);
+    });
+  }, 300);
+}
+
+// ════════════════════════════════════════════════════════
+// INIT — check session
+// ════════════════════════════════════════════════════════
+(function init() {
+  const today = new Date().toISOString().split('T')[0];
+  const wkDate = document.getElementById('wk-date');
+  if (wkDate) wkDate.value = today;
+
+  // Default role UI
+  selectRole('Owner');
+
+  // Auto-login from session
+  const savedEmail = load('gympt_session', null);
+  if (savedEmail) {
+    const accounts = getAccounts();
+    const acc = accounts[savedEmail];
+    if (acc) {
+      currentUser = savedEmail;
+      currentGymId = acc.role === 'Owner' ? savedEmail : acc.parentGym;
+      loadDashboard(acc);
+      return;
+    }
+  }
+})();
+</script>
+</body>
+</html>
