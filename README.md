@@ -2,7 +2,10 @@
 
 A modern, responsive, and feature-rich **Multi-Gym Management System** built using **HTML, CSS, and JavaScript**. GymTracker Pro helps gym owners, managers, and trainers efficiently manage members, trainers, memberships, and workout records through an intuitive dashboard.
 
+live demo
 ---
+https://hackerhumaikyakarlega.github.io/final-project---gym-tracker-pro/
+
 
 ## ✨ Features
 
