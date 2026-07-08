@@ -6,6 +6,9 @@ live demo
 ---
 https://hackerhumaikyakarlega.github.io/final-project---gym-tracker-pro/
 
+presentation
+https://gamma.app/docs/Gym-Tracker-Pro-kgpjk4ekfpr1oae
+
 
 ## ✨ Features
 
